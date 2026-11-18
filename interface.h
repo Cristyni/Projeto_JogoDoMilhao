@@ -18,9 +18,14 @@
 
 #include "pergunta.h"
 
+void limparBuffer(void);
+void lerTexto(char texto[], int tamanho);
+void limparTela(void);
+
 void MenuPrincipal(BancoPerguntas *banco);
 void MenuGerenciar(BancoPerguntas *banco);
 void MenuConsultar(BancoPerguntas *banco);
+
 void cadastrarPergunta(BancoPerguntas *banco);
 void pesquisarPergunta(BancoPerguntas *banco);
 void consultarPorDificuldade(BancoPerguntas *banco, int dificuldade);

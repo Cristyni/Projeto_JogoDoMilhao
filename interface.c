@@ -35,6 +35,9 @@ void lerTexto(char texto[], int tamanho) {
         }
     }
 }
+void limparTela(void) {
+    system("cls");
+}
 
 void MenuPrincipal(BancoPerguntas *banco) {
 
@@ -43,9 +46,11 @@ void MenuPrincipal(BancoPerguntas *banco) {
     int num;
     do {
 
+        limparTela();
+
         printf("   THE OFFICE - DUNDIES\n");
 
-        printf("    MENU PRINCIPAL: \n");
+        printf("    \nMENU PRINCIPAL: \n");
         printf("1 - Jogar\n");
         printf("2 - Gerenciar perguntas\n");
         printf("3 - Consultar perguntas\n");
@@ -88,6 +93,9 @@ void MenuPrincipal(BancoPerguntas *banco) {
                 printf("Opcao invalida!\n");
                 break;
         }
+        if (num != 0) {
+            system("pause");
+}
 
     } while (num != 0);
 }
@@ -97,7 +105,10 @@ void MenuGerenciar(BancoPerguntas *banco) {
 
     int num;
     do {
-        printf("     GERENCIAR PERGUNTAS\n");
+
+        limparTela();
+
+        printf("    \nGERENCIAR PERGUNTAS\n");
 
         printf("1 - Cadastrar pergunta\n");
         printf("2 - Listar perguntas\n");
@@ -147,6 +158,9 @@ void MenuGerenciar(BancoPerguntas *banco) {
                 printf("Opcao invalida!\n");
                 break;
         }
+        if (num != 0) {
+            system("pause");
+}
 
     } while (num != 0);
 }
@@ -158,7 +172,9 @@ void MenuConsultar(BancoPerguntas *banco) {
 
     do {
 
-        printf("    CONSULTAR POR DIFICULDADE\n");
+            limparTela();
+
+        printf("   \nCONSULTAR POR DIFICULDADE\n");
 
         printf("1 - Muito facil\n");
         printf("2 - Facil\n");
