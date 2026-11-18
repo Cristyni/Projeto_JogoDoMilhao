@@ -3,6 +3,7 @@
 #include <string.h>
 #include "interface.h"
 #include "arquivo.h"
+#include "jogo.h"
 
 /**
  * @file interface.c
@@ -71,7 +72,13 @@ void MenuPrincipal(BancoPerguntas *banco) {
         switch (num) {
 
             case 1:
-                printf("Opcao jogar ainda sera implementada.\n");
+                printf("\n1 - Jogar\n");
+                printf("2 - Jogar contra Angela (Computador)\n");
+                printf("Escolha o modo: ");
+                int modo;
+                scanf("%d", &modo);
+                limparBuffer();
+                iniciarPartida(banco, modo == 2);
                 break;
 
             case 2:
