@@ -132,11 +132,11 @@ void MenuGerenciar(BancoPerguntas *banco) {
                 break;
 
             case 4:
-                printf("Alteracao sera implementada.\n");
+                editarPergunta(banco);
                 break;
 
             case 5:
-                printf("Exclusao sera implementada.\n");
+                deletarPergunta(banco);
                 break;
 
             case 0:
@@ -345,5 +345,155 @@ void consultarPorDificuldade(BancoPerguntas *banco, int dificuldade) {
 
     if (encontrou == 0) {
         printf("Nenhuma pergunta cadastrada nesse nivel\n");
+    }
+}
+
+void editarPergunta(BancoPerguntas *banco) {
+
+    char termo[max_enunciado];
+    int indice;
+    int dificuldade;
+    char letra;
+    Pergunta atualizada;
+
+    printf("\n EDITAR PERGUNTA \n");
+
+    if (banco->quantidade == 0) {
+        printf("\nNenhuma pergunta cadastrada!\n");
+        return;
+    }
+
+    printf("Digite o enunciado ou parte dele: ");
+    lerTexto(termo, max_enunciado);
+
+    if (termo[0] == '\0') {
+        printf("\nDigite um termo para pesquisar!\n");
+        return;
+    }
+
+    indice = pesquisarPerguntaPorTexto(banco, termo);
+
+    if (indice == -1) {
+        printf("\nPergunta nao encontrada!\n");
+        return;
+    }
+
+    printf("\nPergunta encontrada!\n");
+    printf("Enunciado: %s\n", banco->itens[indice].enunciado);
+
+    printf("\nDigite o novo enunciado: ");
+    lerTexto(atualizada.enunciado, max_enunciado);
+
+    for (int i = 0; i < QTD_alternativas; i++) {
+
+        printf("Nova alternativa %c: ", 'A' + i);
+
+        lerTexto(atualizada.alternativas[i], max_alternativa);
+    }
+
+    do {
+        printf("Digite a nova letra correta (A, B, C ou D): ");
+
+        scanf(" %c", &letra);
+        limparBuffer();
+
+        if (letra >= 'a' && letra <= 'z') {
+            letra = letra - ('a' - 'A');
+        }
+
+        if (letra < 'A' || letra > 'D') {
+            printf("Letra invalida!\n");
+        }
+
+    } while (letra < 'A' || letra > 'D');
+
+    atualizada.letraCorreta = letra;
+
+    do {
+        printf("Digite a nova dificuldade (1 a 5): ");
+
+        if (scanf("%d", &dificuldade) != 1) {
+            printf("Digite apenas numeros!\n");
+            limparBuffer();
+            dificuldade = -1;
+        }
+        else {
+            limparBuffer();
+        }
+
+        if (dificuldade < 1 || dificuldade > 5) {
+            printf("Dificuldade invalida!\n");
+        }
+
+    } while (dificuldade < 1 || dificuldade > 5);
+
+    atualizada.dificuldade = dificuldade;
+
+    if (alterarPergunta(banco, indice, atualizada)) {
+        printf("\nPergunta alterada com sucesso!\n");
+    }
+    else {
+        printf("\nErro ao alterar pergunta!\n");
+    }
+}
+
+void deletarPergunta(BancoPerguntas *banco) {
+
+    char termo[max_enunciado];
+    char confirmacao;
+    int indice;
+
+    printf("\n EXCLUIR PERGUNTA \n");
+
+    if (banco->quantidade == 0) {
+        printf("\nNenhuma pergunta cadastrada\n");
+        return;
+    }
+
+    printf("Digite o enunciado ou parte dele: ");
+    lerTexto(termo, max_enunciado);
+
+    if (termo[0] == '\0') {
+        printf("\nDigite um termo para pesquisar\n");
+        return;
+    }
+
+    indice = pesquisarPerguntaPorTexto(banco, termo);
+
+    if (indice == -1) {
+        printf("\nPergunta nao encontrada\n");
+        return;
+    }
+
+    printf("\nPergunta encontrada:\n");
+    printf("Enunciado: %s\n", banco->itens[indice].enunciado);
+
+    do {
+        printf("\nDeseja realmente excluir esta pergunta? (S/N): ");
+        scanf(" %c", &confirmacao);
+        limparBuffer();
+
+        if (confirmacao >= 'a' && confirmacao <= 'z') {
+            confirmacao = confirmacao - ('a' - 'A');
+        }
+
+        if (confirmacao != 'S' && confirmacao != 'N') {
+            printf("Digite apenas S ou N!\n");
+        }
+
+    } while (confirmacao != 'S' && confirmacao != 'N');
+
+    if (confirmacao == 'S') {
+
+        if (excluirPergunta(banco, indice)) {
+            printf("\nPergunta excluida com sucesso\n");
+        }
+        else {
+            printf("\nErro ao excluir pergunta\n");
+        }
+
+    }
+    else {
+        printf("\nExclusao cancelada\n");
     }
 }
