@@ -5,7 +5,6 @@
 #include "arquivo.h"
 #include "jogo.h"
 
-
 /**
  * @file interface.c
  * @author Mafer
