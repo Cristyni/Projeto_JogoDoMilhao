@@ -2,6 +2,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include "interface.h"
+#include "arquivo.h"
 
 /**
  * @file interface.c
@@ -82,7 +83,7 @@ void MenuPrincipal(BancoPerguntas *banco) {
                 break;
 
             case 4:
-                printf("Exportacao CSV sera integrada posteriormente.\n");
+                exportarCSV(banco, "perguntas.csv");
                 break;
 
             case 0:
@@ -228,6 +229,9 @@ void MenuConsultar(BancoPerguntas *banco) {
                 printf("Opcao invalida!\n");
                 break;
         }
+        if (num != 0) {
+            system("pause");
+}
 
     } while (num != 0);
 }

@@ -2,6 +2,7 @@
 #include <stdlib.h>
 #include "interface.h"
 #include "pergunta.h"
+#include "arquivo.h"
 
 
 /**
@@ -23,7 +24,9 @@ int main(void) {
     BancoPerguntas banco;
 
     inicializarBanco(&banco);
+    carregarBinario(&banco, "perguntas.dat");
     MenuPrincipal(&banco);
+    salvarBinario(&banco, "perguntas.dat");
     liberarBanco(&banco);
 
     return 0;
