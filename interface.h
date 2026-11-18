@@ -16,8 +16,14 @@
 #ifndef INTERFACE_H
 #define INTERFACE_H
 
-void MenuPrincipal(void);
-void MenuGerenciar(void);
-void MenuConsultar(void);
+#include "pergunta.h"
+
+void MenuPrincipal(BancoPerguntas *banco);
+void MenuGerenciar(BancoPerguntas *banco);
+void MenuConsultar(BancoPerguntas *banco);
+void cadastrarPergunta(BancoPerguntas *banco);
+void pesquisarPergunta(BancoPerguntas *banco);
+void consultarPorDificuldade(BancoPerguntas *banco, int dificuldade);
+
 
 #endif

@@ -3,7 +3,7 @@
 #include <string.h>
 #include "pergunta.h"
 
-void inicializar(BancoPerguntas *banco) {
+void inicializarBanco(BancoPerguntas *banco) {
     banco->itens = NULL;
     banco->quantidade = 0;
     banco->capacidade = 0;
