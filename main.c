@@ -16,9 +16,6 @@
  * 
  */
 
- //main temporaria pra teste das funções do interface.c
-
-
 int main(void) {
 
     BancoPerguntas banco;
