@@ -4,21 +4,36 @@
 #include "pergunta.h"
 
 void inicializarBanco(BancoPerguntas *banco) {
-    banco->itens = NULL;
+    banco->capacidade = 4;
     banco->quantidade = 0;
-    banco->capacidade = 0;
+
+    banco->itens = (Pergunta *) malloc(banco->capacidade * sizeof(Pergunta));
+
+    if (banco->itens == NULL) {
+        printf("Erro critico: Falha ao alocar memoria com malloc!\n");
+        banco->capacidade = 0;
+    }
 }
 
 int inserirPergunta(BancoPerguntas *banco, Pergunta nova) {
-    if (banco->quantidade == banco->capacidade) {
-        int novaCapacidade = (banco->capacidade == 0) ? 4 : banco->capacidade * 2;
-        Pergunta *temp = (Pergunta *) realloc(banco->itens, novaCapacidade * sizeof(Pergunta));
-        
-        if (temp == NULL) {
-            printf("Erro critico: Falha ao alocar memoria!\n");
+    if (banco->itens == NULL) {
+        banco->capacidade = 4;
+        banco->itens = (Pergunta *) malloc(banco->capacidade * sizeof(Pergunta));
+        if (banco->itens == NULL) {
+            printf("Erro critico: Falha ao alocar memoria com malloc!\n");
             return 0;
         }
-        
+    }
+
+    if (banco->quantidade == banco->capacidade) {
+        int novaCapacidade = banco->capacidade * 2;
+        Pergunta *temp = (Pergunta *) realloc(banco->itens, novaCapacidade * sizeof(Pergunta));
+
+        if (temp == NULL) {
+            printf("Erro critico: Falha ao realocar memoria!\n");
+            return 0;
+        }
+
         banco->itens = temp;
         banco->capacidade = novaCapacidade;
     }
