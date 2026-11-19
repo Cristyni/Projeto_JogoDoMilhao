@@ -107,23 +107,23 @@ int sortearPerguntasRodada(
     //definir a dificuldade e a quantidade da rodada
     if (rodada >= 1 && rodada <= 2) {
         dificuldade = 1;
-        quantidade = 2;
+        quantidade = 1;
     }
     else if (rodada >= 3 && rodada <= 4) {
         dificuldade = 2;
-        quantidade = 2;
+        quantidade = 1;
     }
     else if (rodada >= 5 && rodada <= 8) {
         dificuldade = 3;
-        quantidade = 4;
+        quantidade = 1;
     }
     else if (rodada >= 9 && rodada <= 12) {
         dificuldade = 4;
-        quantidade = 4;
+        quantidade = 1;
     }
     else if (rodada >= 13 && rodada <= 15) {
         dificuldade = 5;
-        quantidade = 3;
+        quantidade = 1;
     }
     else {
         return 0;
@@ -138,8 +138,7 @@ int sortearPerguntasRodada(
     int total = 0;
 
     for (int i = 0; i < banco->quantidade; i++) {
-        if (banco->itens[i].dificuldade == dificuldade &&
-            jaUsadas[i] == 0) {
+        if (banco->itens[i].dificuldade == dificuldade && jaUsadas[i] == 0) {
             candidatos[total] = i;
             total++;
         }

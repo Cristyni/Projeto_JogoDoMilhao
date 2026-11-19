@@ -1,14 +1,21 @@
-# Makefile para o Jogo do Milhão - The Office
+
+# Makefile - Jogo do Milhao The Office
+
 CC = gcc
 CFLAGS = -Wall -Wextra -std=c99
-TARGET = jogo_the_office
+TARGET = dundies.exe
 
-# Lista de arquivos fonte
+# Arquivos fonte
 SRCS = main.c interface.c arquivo.c pergunta.c jogo.c
+
+# Arquivos objeto
 OBJS = $(SRCS:.c=.o)
+
+.PHONY: all run clean
 
 all: $(TARGET)
 
+# Junta todos os objetos
 $(TARGET): $(OBJS)
 	$(CC) $(OBJS) -o $(TARGET)
 
@@ -19,4 +26,4 @@ run: all
 	./$(TARGET)
 
 clean:
-	rm -f *.o $(TARGET) perguntas.dat
+	powershell -NoProfile -Command "Remove-Item -Path '*.o', '$(TARGET)' -ErrorAction SilentlyContinue"
