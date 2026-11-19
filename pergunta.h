@@ -70,4 +70,12 @@ int excluirPergunta(BancoPerguntas *banco, int indice);
  */
 void liberarBanco(BancoPerguntas *banco);
 
+/*sortear as perguntas de acordo com a rodada*/
+int sortearPerguntasRodada(
+    const BancoPerguntas *banco,
+    int rodada,
+    int indices[],
+    int jaUsadas[]
+);
+
 #endif

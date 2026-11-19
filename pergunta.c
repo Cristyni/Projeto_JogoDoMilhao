@@ -4,36 +4,21 @@
 #include "pergunta.h"
 
 void inicializarBanco(BancoPerguntas *banco) {
-    banco->capacidade = 4;
+    banco->itens = NULL;
     banco->quantidade = 0;
-
-    banco->itens = (Pergunta *) malloc(banco->capacidade * sizeof(Pergunta));
-
-    if (banco->itens == NULL) {
-        printf("Erro critico: Falha ao alocar memoria com malloc!\n");
-        banco->capacidade = 0;
-    }
+    banco->capacidade = 0;
 }
 
 int inserirPergunta(BancoPerguntas *banco, Pergunta nova) {
-    if (banco->itens == NULL) {
-        banco->capacidade = 4;
-        banco->itens = (Pergunta *) malloc(banco->capacidade * sizeof(Pergunta));
-        if (banco->itens == NULL) {
-            printf("Erro critico: Falha ao alocar memoria com malloc!\n");
-            return 0;
-        }
-    }
-
     if (banco->quantidade == banco->capacidade) {
-        int novaCapacidade = banco->capacidade * 2;
+        int novaCapacidade = (banco->capacidade == 0) ? 4 : banco->capacidade * 2;
         Pergunta *temp = (Pergunta *) realloc(banco->itens, novaCapacidade * sizeof(Pergunta));
-
+        
         if (temp == NULL) {
-            printf("Erro critico: Falha ao realocar memoria!\n");
+            printf("Erro critico: Falha ao alocar memoria!\n");
             return 0;
         }
-
+        
         banco->itens = temp;
         banco->capacidade = novaCapacidade;
     }
@@ -109,4 +94,77 @@ void liberarBanco(BancoPerguntas *banco) {
     }
     banco->quantidade = 0;
     banco->capacidade = 0;
+}
+int sortearPerguntasRodada(
+    const BancoPerguntas *banco,
+    int rodada,
+    int indices[],
+    int jaUsadas[]
+) {
+    int dificuldade;
+    int quantidade;
+
+    //definir a dificuldade e a quantidade da rodada
+    if (rodada >= 1 && rodada <= 2) {
+        dificuldade = 1;
+        quantidade = 2;
+    }
+    else if (rodada >= 3 && rodada <= 4) {
+        dificuldade = 2;
+        quantidade = 2;
+    }
+    else if (rodada >= 5 && rodada <= 8) {
+        dificuldade = 3;
+        quantidade = 4;
+    }
+    else if (rodada >= 9 && rodada <= 12) {
+        dificuldade = 4;
+        quantidade = 4;
+    }
+    else if (rodada >= 13 && rodada <= 15) {
+        dificuldade = 5;
+        quantidade = 3;
+    }
+    else {
+        return 0;
+    }
+
+    //vetor para guardar os indices da perguntas candidatas
+    int *candidatos = malloc(banco->quantidade * sizeof(int));
+    if (candidatos == NULL) {
+        return 0;
+    }
+
+    int total = 0;
+
+    for (int i = 0; i < banco->quantidade; i++) {
+        if (banco->itens[i].dificuldade == dificuldade &&
+            jaUsadas[i] == 0) {
+            candidatos[total] = i;
+            total++;
+        }
+    }
+
+    if (total < quantidade) {
+        free(candidatos);
+        return 0;
+    }
+
+    for (int i = total - 1; i > 0; i--) {
+
+        int j = rand() % (i + 1);
+        int auxiliar = candidatos[i];
+        candidatos[i] = candidatos[j];
+        candidatos[j] = auxiliar;
+    }
+
+    //escolher perguntas sorteadas e marcar seus indices como utilizados
+    for (int i = 0; i < quantidade; i++) {
+        indices[i] = candidatos[i];
+        jaUsadas[indices[i]] = 1;
+    }
+
+    free(candidatos);
+
+    return quantidade;
 }
