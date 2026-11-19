@@ -5,6 +5,7 @@
 #include "arquivo.h"
 #include "jogo.h"
 
+
 /**
  * @file interface.c
  * @author Mafer
@@ -72,7 +73,7 @@ void MenuPrincipal(BancoPerguntas *banco) {
         switch (num) {
 
             case 1:
-                    iniciarJogo();
+                iniciarJogo(banco);;
                 break;
 
             case 2:

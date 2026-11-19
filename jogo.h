@@ -12,10 +12,12 @@
 #ifndef JOGO_H
 #define JOGO_H
 
+#include "pergunta.h"
+
 const char *obterDificuldade(int rodada);
 void mostrarRodada(int rodada, int pontuacao);
 void mostrarPergunta(const char *enunciado, const char *alternativas[4]);
-void iniciarJogo(void);
+char lerResposta(void);
+void iniciarJogo(BancoPerguntas *banco);
 
-
-#endif //JOGO_H
+#endif // JOGO_H
