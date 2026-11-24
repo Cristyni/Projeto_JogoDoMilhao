@@ -1,10 +1,3 @@
-#include <stdio.h>
-#include <stdlib.h>
-#include "interface.h"
-#include "pergunta.h"
-#include "arquivo.h"
-
-
 /**
  * @file main.c
  * @author Mafer
@@ -15,6 +8,14 @@
  * @copyright Copyright (c) 2026
  * 
  */
+
+#include <stdio.h>
+#include <stdlib.h>
+#include "interface.h"
+#include "pergunta.h"
+#include "arquivo.h"
+#include "raylib.h"
+
 
 int main(void) {
 
