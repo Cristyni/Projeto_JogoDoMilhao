@@ -9,6 +9,7 @@
  * 
  */
 #include <stdlib.h>
+#include <stdio.h>
 #include "cpu.h"
 
 // Sorteia o tempo de resposta conforme a dificuldade escolhida
