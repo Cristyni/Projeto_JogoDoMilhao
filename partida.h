@@ -37,14 +37,26 @@ typedef struct {
 
     int acertosPam;
     int respondeuPam;
+    double instanteRespostaPam; //armazena o momento em que Pam escolheu sua alternativa
     int acertosAngela;
     int moedas;
     int premio;
+
+    int acertouPamRodada;
+    int acertouAngelaRodada;
+    int pontosPam;
+    int pontosAngela;
+    int rodadaPontuada;
+    int rodadaAvaliada;
+
+    bool ocultas[4]; //alternativas que foram escondidas
+    int dicaIndice;
 
     InventarioAjudas inventario;
     int finalizada;
 
 } PartidaGrafica;
+
 
 
 int iniciarPartidaGrafica(
@@ -58,14 +70,23 @@ int iniciarPartidaGrafica(
 void finalizarPartidaGrafica(PartidaGrafica *partida);
 int avancarRodada(PartidaGrafica *partida);
 
-int registrarRespostaPam(
-PartidaGrafica *partida,
+int registrarRespostaPam( 
+    PartidaGrafica *partida,
     char resposta,
-    int moedasPorAcerto
+    int moedasPorAcerto,
+    double tempoAtual
 );
 
 void prepararRespostaAngela( PartidaGrafica *partida,double tempoInicio);
  
 int atualizarRespostaAngela(PartidaGrafica *partida,double tempoAtual);
+int verificarVencedorRodada(const PartidaGrafica *partida);
+int contabilizarResultadoRodada(PartidaGrafica *partida);
+int encerrarCompeticao(PartidaGrafica *partida);
+int avaliarRodadaSolo(PartidaGrafica *partida);
+int desistirPartidaSolo(PartidaGrafica *partida);
+int comprarAjudaCreed(PartidaGrafica *partida, TipoAjuda tipo);
+
+EfeitoAjuda usarAjudaCreed( PartidaGrafica *partida, TipoAjuda tipo );
 
 #endif
