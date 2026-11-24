@@ -76,6 +76,19 @@ int avancarRodada(PartidaGrafica *partida) {
     if (partida == NULL || partida->finalizada || partida->banco == NULL || partida->jaUsadas == NULL) {
         return 0;
     }
+    if (partida->modo == MODO_SOLO) {
+        if (!partida->rodadaAvaliada || !partida->acertouPamRodada) {
+            return 0;
+        }
+    }
+    else if (partida->modo == MODO_COMPETICAO) {
+        if (!partida->rodadaPontuada) {
+            return 0;
+        }
+    }
+    else {
+        return 0;
+    }
 
     // A partida possui no maximo 15 rodadas
     if (partida->rodada >= 15) {
@@ -135,6 +148,9 @@ int registrarRespostaPam(
     if (resposta < 'A' || resposta > 'D') {
         return -1;
     }
+    if (partida->ocultas[resposta - 'A']) {
+        return -1;
+}
 
     // Acessa a pergunta atual
     const Pergunta *pergunta =
@@ -325,10 +341,27 @@ int avaliarRodadaSolo(PartidaGrafica *partida) {
 
         return 1;
     }
+     // Na pergunta do milhao, errar resulta em premio zero
     if (partida->rodada == 15) {
         partida->premio = 0;
     } else {
-        partida->premio /= 2;
+        // Calcula metade do premio acumulado
+        int premioSeErrar = partida->premio / 2;
+        int marcoSeguranca = 0;
+
+        // Verifica os marcos ja conquistados
+        if (partida->rodada > 10) {
+            marcoSeguranca = 50000;
+        } else if (partida->rodada > 5) {
+            marcoSeguranca = 5000;
+        }
+
+        // Garante o valor minimo do marco conquistado
+        if (premioSeErrar < marcoSeguranca) {
+            premioSeErrar = marcoSeguranca;
+        }
+
+        partida->premio = premioSeErrar;
     }
     partida->finalizada = 1;
     
@@ -367,8 +400,8 @@ int comprarAjudaCreed(PartidaGrafica *partida, TipoAjuda tipo) {
     return custo;
 }
 
-EfeitoAjuda usarAjudaCreed( PartidaGrafica *partida, TipoAjuda tipo) {
-
+EfeitoAjuda usarAjudaCreed(PartidaGrafica *partida,TipoAjuda tipo,double tempoAtual) {
+    
     EfeitoAjuda efeito = {0};
 
     efeito.tipo = tipo;
@@ -438,13 +471,56 @@ EfeitoAjuda usarAjudaCreed( PartidaGrafica *partida, TipoAjuda tipo) {
 
         partida->dicaIndice = -1;
 
-        // Reinicia a resposta de Angela para a nova pergunta
-        partida->angelaPreparada = 0;
-        partida->angela.respondeu = 0;
-        partida->acertouAngelaRodada = 0;
+        if (partida->modo == MODO_COMPETICAO) {
 
-        inventarioNovaPergunta(&partida->inventario);
-    }
+        // Desfaz um acerto da pergunta descartada, se houver
+            if (partida->acertouAngelaRodada) {
+                partida->acertosAngela--;
+            }
+
+            partida->acertouAngelaRodada = 0;
+
+            // Sorteia outra resposta e reinicia o cronometro
+            prepararCPU( &partida->angela, partida->nivelCPU, tempoAtual);
+
+            partida->angelaPreparada = 1;
+        }
+            inventarioNovaPergunta(&partida->inventario);
+        }
 
     return efeito;
+}
+
+const Pergunta *obterPerguntaAtual( const PartidaGrafica *partida) {
+
+    if (partida == NULL || partida->banco == NULL || partida->banco->itens == NULL) {
+        return NULL;
+    }
+    if (partida->indicePergunta < 0 || partida->indicePergunta >= partida->banco->quantidade) {
+        return NULL;
+    }
+    // Retorna a pergunta selecionada
+    return &partida->banco->itens[partida->indicePergunta];
+}
+
+int atualizarPartidaCompeticao(
+    PartidaGrafica *partida,
+    double tempoAtual
+) {
+    if (partida == NULL || partida->modo != MODO_COMPETICAO || partida->finalizada) {
+        return -1;
+    }
+     if (partida->rodadaPontuada) {
+        return verificarVencedorRodada(partida);
+    }
+    if (!partida->angelaPreparada) {
+        prepararRespostaAngela(partida, tempoAtual);
+    }
+    if (atualizarRespostaAngela(partida, tempoAtual) < 0) {
+        return -1;
+    }
+    if (!partida->respondeuPam ||!partida->angela.respondeu) {
+        return 0;
+    }
+    return contabilizarResultadoRodada(partida);
 }

@@ -13,6 +13,7 @@
 #ifndef PARTIDA_H
 #define PARTIDA_H
 
+#include <stdbool.h>
 #include "pergunta.h"
 #include "cpu.h"
 #include "ajudas.h"
@@ -87,6 +88,9 @@ int avaliarRodadaSolo(PartidaGrafica *partida);
 int desistirPartidaSolo(PartidaGrafica *partida);
 int comprarAjudaCreed(PartidaGrafica *partida, TipoAjuda tipo);
 
-EfeitoAjuda usarAjudaCreed( PartidaGrafica *partida, TipoAjuda tipo );
+EfeitoAjuda usarAjudaCreed( PartidaGrafica *partida, TipoAjuda tipo, double tempoAtual);
+const Pergunta *obterPerguntaAtual( const PartidaGrafica *partida );
+
+int atualizarPartidaCompeticao( PartidaGrafica *partida, double tempoAtual);
 
 #endif
