@@ -2,28 +2,40 @@
 # Makefile - Jogo do Milhao The Office
 
 CC = gcc
-CFLAGS = -Wall -Wextra -std=c99
-TARGET = dundies.exe
 
-# Arquivos fonte
+CFLAGS = -Wall -Wextra -std=c99 -I/ucrt64/include
+
+# Versao console
+TARGET = dundies.exe
 SRCS = main.c interface.c arquivo.c pergunta.c jogo.c
 
-# Arquivos objeto
-OBJS = $(SRCS:.c=.o)
+# Versao grafica
+TARGET_GRAFICO = jogo_grafico.exe
+SRCS_GRAFICO = main_grafico.c arquivo.c pergunta.c
 
-.PHONY: all run clean
+# Bibliotecas Raylib
+RAYLIB_LIBS = -L/ucrt64/lib -lraylib -lopengl32 -lgdi32 -lwinmm
+
+.PHONY: all run grafico clean
 
 all: $(TARGET)
 
-# Junta todos os objetos
-$(TARGET): $(OBJS)
-	$(CC) $(OBJS) -o $(TARGET)
+# Compilar jogo de console
+$(TARGET): $(SRCS)
+	$(CC) $(CFLAGS) $(SRCS) -o $(TARGET)
 
-%.o: %.c
-	$(CC) $(CFLAGS) -c $< -o $@
+# Compilar jogo grafico
+$(TARGET_GRAFICO): $(SRCS_GRAFICO)
+	$(CC) $(CFLAGS) $(SRCS_GRAFICO) -o $(TARGET_GRAFICO) $(RAYLIB_LIBS)
 
+# Executar console
 run: all
 	./$(TARGET)
 
+# Executar jogo grafico
+grafico: $(TARGET_GRAFICO)
+	./$(TARGET_GRAFICO)
+
+# Limpar executaveis e objetos
 clean:
-	powershell -NoProfile -Command "Remove-Item -Path '*.o', '$(TARGET)' -ErrorAction SilentlyContinue"
+	rm -f *.o $(TARGET) $(TARGET_GRAFICO)
