@@ -11,9 +11,7 @@ SRCS = main.c interface.c arquivo.c pergunta.c jogo.c
 
 # Versao grafica
 TARGET_GRAFICO = jogo_grafico.exe
-SRCS_GRAFICO = main_grafico.c arquivo.c pergunta.c
-
-# Bibliotecas Raylib
+SRCS_GRAFICO = main_grafico.c arquivo.c pergunta.c cpu.c partida.c ajudas.c# Bibliotecas Raylib
 RAYLIB_LIBS = -L/ucrt64/lib -lraylib -lopengl32 -lgdi32 -lwinmm
 
 .PHONY: all run grafico clean

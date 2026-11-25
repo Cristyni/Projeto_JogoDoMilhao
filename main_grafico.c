@@ -17,6 +17,7 @@
 #include "arquivo.h"
 #include "raylib.h"
 #include "pergunta.h"
+#include "partida.h"
 
 
 /*Constantes de preços e regras*/
@@ -24,8 +25,6 @@
 #define ALTURA 650
 #define TOTAL_RODADAS 15
 #define MOEDAS_POR_ACERTO 1
-
-enum { AJUDA_DICA, AJUDA_5050, AJUDA_TROCA, QTD_AJUDAS };
 
 static const int PRECOS[QTD_AJUDAS] = { 2, 3, 4 };
 static const char *NOMES_AJUDAS[QTD_AJUDAS] = {
@@ -83,6 +82,7 @@ typedef struct {
     BancoPerguntas *banco;
     Tela tela;
     bool sair;
+    PartidaGrafica partida;
 
     bool modoCPU;
     int nivelCPU;              /* 0, 1 ou 2 */
@@ -104,6 +104,7 @@ typedef struct {
 
     bool pamRespondeu;
     bool cpuRespondeu;
+    Computador angela;
     char respostaCPU;
     int tempoCPU;
     double inicioRodada;
@@ -178,20 +179,20 @@ static void textoQuebrado(const char *texto, int x, int y, int larg, int tam, Co
 }
  /* Desenha um botao arredondado e devolve true se foi clicado */
     static bool botaoArredondado(Rectangle r, const char *texto, Color cor, bool ativo) {
-    bool sobre = ativo && CheckCollisionPointRec(GetMousePosition(), r);
-    Color c = !ativo ? GRAY : (sobre ? ColorBrightness(cor, 0.25f) : cor);
+        bool sobre = ativo && CheckCollisionPointRec(GetMousePosition(), r);
+        Color c = !ativo ? GRAY : (sobre ? ColorBrightness(cor, 0.25f) : cor);
 
-    /* 0.4f controla o nivel de arredondamento (0.0 = quadrado, 1.0 = pilula) */
-    DrawRectangleRounded(r, 0.4f, 12, c);
-    DrawRectangleRoundedLinesEx(r, 0.4f, 12, 2, BLACK);
+        /* 0.4f controla o nivel de arredondamento (0.0 = quadrado, 1.0 = pilula) */
+        DrawRectangleRounded(r, 0.4f, 12, c);
+        DrawRectangleRoundedLinesEx(r, 0.4f, 12, 2, BLACK);
 
-    int larguraTexto = MeasureText(texto, 20);
-    DrawText(texto,
-             (int)(r.x + (r.width - larguraTexto) / 2),
-             (int)(r.y + (r.height - 20) / 2),
-             20, COR_TEXTO_BOTAO);
+        int larguraTexto = MeasureText(texto, 20);
+        DrawText(texto,
+                (int)(r.x + (r.width - larguraTexto) / 2),
+                (int)(r.y + (r.height - 20) / 2),
+                20, COR_TEXTO_BOTAO);
 
-    return sobre && IsMouseButtonPressed(MOUSE_BUTTON_LEFT);
+        return sobre && IsMouseButtonPressed(MOUSE_BUTTON_LEFT);
 }
 
 /* Desenha um botao e devolve true se foi clicado neste frame */
@@ -259,13 +260,18 @@ static void iniciarRodada(Jogo *j) {
     j->pamRespondeu = false;
     j->cpuRespondeu = false;
 
-    if (j->modoCPU) {
-        /* sorteado UMA vez por pergunta, sem olhar o gabarito */
-        int sorteio = rand() % 24;
-        int mn = TEMPO_MIN[j->nivelCPU];
-        int mx = TEMPO_MAX[j->nivelCPU];
-        j->respostaCPU = (char)('A' + sorteio / 6);
-        j->tempoCPU = mn + rand() % (mx - mn + 1);
+     if (j->modoCPU) {
+        prepararCPU(
+            &j->angela,
+            (NivelCPU)j->nivelCPU,
+            GetTime()
+        );
+
+        j->respostaCPU = j->angela.resposta;
+        j->tempoCPU = (int)j->angela.tempoResposta;
+        j->inicioRodada = j->angela.inicioPergunta;
+    } else {
+        j->inicioRodada = GetTime();
     }
 
     j->inicioRodada = GetTime();   /* o cronometro comeca aqui, depois da loja */
@@ -347,10 +353,9 @@ static void responder(Jogo *j, char letra) {
 }
 
 /* Chamada todo frame: verifica se o tempo da CPU acabou (sem sleep!) */
-static void atualizarCPU(Jogo *j) {
+static void atualizarCPUVisual(Jogo *j){
     if (!j->modoCPU || j->tela != TELA_PERGUNTA || j->cpuRespondeu) return;
-    if (GetTime() - j->inicioRodada < j->tempoCPU) return;
-
+        if (!atualizarCPU(&j->angela, GetTime())) return;
     j->cpuRespondeu = true;
     char certa = letraCorreta(j);
 
@@ -763,7 +768,7 @@ int main(void) {
 
     while (!WindowShouldClose() && !jogo.sair) {
 
-        atualizarCPU(&jogo);
+        atualizarCPUVisual(&jogo);
 
         BeginDrawing();
         ClearBackground(FUNDO);
