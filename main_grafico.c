@@ -242,9 +242,9 @@ static void limparEfeitosDaPergunta(Jogo *j) {
 
 /* Sorteia a pergunta da rodada e (no modo PC) a resposta e o tempo da CPU */
 static void iniciarRodada(Jogo *j) {
-    int idx[1];
+    const Pergunta *pergunta = obterPerguntaAtual(&j->partida);
 
-    if (sortearPerguntasRodada(j->banco, j->rodada, idx, j->jaUsadas) != 1) {
+    if (pergunta == NULL) {
         snprintf(j->mensagem, sizeof(j->mensagem),
                  "Perguntas insuficientes para continuar.");
         j->premioFinal = j->premioAcumulado;
@@ -253,32 +253,41 @@ static void iniciarRodada(Jogo *j) {
         return;
     }
 
-    j->indice = idx[0];
+    j->indice = j->partida.indicePergunta;
+    j->rodada = j->partida.rodada;
+
+    if (j->jaUsadas != NULL) {
+        j->jaUsadas[j->indice] = 1;
+    }
+
     limparEfeitosDaPergunta(j);
-    for (int i = 0; i < QTD_AJUDAS; i++) j->usadaNestaPergunta[i] = false;
+
+    for (int i = 0; i < QTD_AJUDAS; i++) {
+        j->usadaNestaPergunta[i] = false;
+    }
 
     j->pamRespondeu = false;
     j->cpuRespondeu = false;
 
-     if (j->modoCPU) {
-        prepararCPU(
-            &j->angela,
-            (NivelCPU)j->nivelCPU,
-            GetTime()
-        );
+    if (j->modoCPU) {
+        prepararRespostaAngela(&j->partida, GetTime());
 
-        j->respostaCPU = j->angela.resposta;
-        j->tempoCPU = (int)j->angela.tempoResposta;
-        j->inicioRodada = j->angela.inicioPergunta;
+        j->angela = j->partida.angela;
+        j->respostaCPU = j->partida.angela.resposta;
+        j->tempoCPU = (int)j->partida.angela.tempoResposta;
+        j->inicioRodada = j->partida.angela.inicioPergunta;
     } else {
         j->inicioRodada = GetTime();
     }
 
-    j->inicioRodada = GetTime();   /* o cronometro comeca aqui, depois da loja */
     j->tela = TELA_PERGUNTA;
 }
 
 static void novaPartida(Jogo *j, bool modoCPU, int nivelCPU) {
+    if (j->partida.jaUsadas != NULL) {
+        finalizarPartidaGrafica(&j->partida);
+    }
+
     free(j->jaUsadas);
     j->jaUsadas = calloc(j->banco->quantidade, sizeof(int));
 
@@ -292,16 +301,29 @@ static void novaPartida(Jogo *j, bool modoCPU, int nivelCPU) {
     j->premioAcumulado = 0;
     j->premioFinal = 0;
     j->fimDeJogo = false;
-    for (int i = 0; i < QTD_AJUDAS; i++) j->estoque[i] = 0;
+
+    for (int i = 0; i < QTD_AJUDAS; i++) {
+        j->estoque[i] = 0;
+    }
+
     j->mensagem[0] = '\0';
 
-    if (j->jaUsadas == NULL) {
-        j->tela = TELA_MENU;
-        return;
+    if (j->jaUsadas == NULL ||
+        !iniciarPartidaGrafica(
+            &j->partida,
+            j->banco,
+            modoCPU ? MODO_COMPETICAO : MODO_SOLO,
+            (NivelCPU)nivelCPU
+        )) {
+
+            snprintf(j->mensagem, sizeof(j->mensagem),
+                    "Erro ao iniciar a partida.");
+            j->tela = TELA_MENU;
+            return;
     }
+
     iniciarRodada(j);
 }
-
 /* Encerra a rodada atual e vai para a tela de feedback */
 static void finalizarRodada(Jogo *j) {
     if (j->rodada >= TOTAL_RODADAS) j->fimDeJogo = true;
