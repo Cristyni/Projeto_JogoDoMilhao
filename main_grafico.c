@@ -71,10 +71,69 @@ static Texture2D texFundoMenu = { 0 };
 static Texture2D texPamMenu   = { 0 };
 static Texture2D texPamVitoria = { 0 };
 static Texture2D texAngela = { 0 };
+static Texture2D texDundie = { 0 };
 static Texture2D texMichael = { 0 };
 static Texture2D texFundoBanheiro = { 0 };
 static Texture2D texCreed         = { 0 };
 static Texture2D texPoderes[3]    = { { 0 }, { 0 }, { 0 } };
+static Texture2D texPamMilhao = { 0 };
+
+//Sistema de confetes para a vitoria de 1 milhao
+#define MAX_CONFETES 140
+typedef struct {
+    float x, y;
+    float vx, vy;
+    float tam;
+    Color cor;
+    bool ativo;
+} Confete;
+
+static Confete confetes[MAX_CONFETES];
+static bool confetesIniciados = false;
+
+//confetes do premio de 1 milhão
+static void iniciarConfetes(void) {
+    Color paleta[] = { DOURADO, VERDE, VERMELHO, AZUL, ORANGE, PINK, SKYBLUE };
+    for (int i = 0; i < MAX_CONFETES; i++) {
+        bool esquerda = (i % 2 == 0);
+        confetes[i].x = esquerda ? 20.0f : (float)(LARGURA - 20);
+        confetes[i].y = (float)(ALTURA - 20);
+        /* Impulso para cima e para o centro da tela */
+        float dirX = esquerda ? 1.0f : -1.0f;
+        confetes[i].vx = dirX * (float)(120 + rand() % 340);
+        confetes[i].vy = -(float)(420 + rand() % 360);
+        confetes[i].tam = (float)(6 + rand() % 6);
+        confetes[i].cor = paleta[rand() % 7];
+        confetes[i].ativo = true;
+    }
+    confetesIniciados = true;
+}
+
+static void atualizarEDesenharConfetes(void) {
+    if (!confetesIniciados) iniciarConfetes();
+    float dt = GetFrameTime();
+
+    for (int i = 0; i < MAX_CONFETES; i++) {
+        if (!confetes[i].ativo) continue;
+        confetes[i].x += confetes[i].vx * dt;
+        confetes[i].y += confetes[i].vy * dt;
+        confetes[i].vy += 480.0f * dt; //Gravidade puxando para baixo
+        confetes[i].vx *= 0.99f;       //Resistencia do ar
+
+        DrawRectangle((int)confetes[i].x, (int)confetes[i].y,
+                      (int)confetes[i].tam, (int)(confetes[i].tam * 0.65f), confetes[i].cor);
+
+        //Reestoura continuamente enquanto estiver na tela de vitoria
+        if (confetes[i].y > ALTURA + 20) {
+            bool esquerda = (i % 2 == 0);
+            confetes[i].x = esquerda ? 20.0f : (float)(LARGURA - 20);
+            confetes[i].y = (float)(ALTURA - 20);
+            float dirX = esquerda ? 1.0f : -1.0f;
+            confetes[i].vx = dirX * (float)(120 + rand() % 340);
+            confetes[i].vy = -(float)(420 + rand() % 360);
+        }
+    }
+}
 
 
 typedef enum {
@@ -87,19 +146,19 @@ typedef struct {
     Tela tela;
     bool sair;
     bool modoCPU;
-    int nivelCPU;              /* 0, 1 ou 2 */
-    int rodada;                /* 1..15 */
+    int nivelCPU;              
+    int rodada;                
     int moedas;
     int acertos;
     int pontosPam, pontosCPU;
     int premioAcumulado, premioFinal;
     bool fimDeJogo;
-    int *jaUsadas;             /* perguntas ja sorteadas nesta partida */
-    int indice;                /* indice da pergunta atual no banco */
-    int estoque[QTD_AJUDAS];          /* ajudas compradas e ainda nao usadas */
+    int *jaUsadas;             //perguntas ja sorteadas nesta partida
+    int indice;                //indice da pergunta atual no banco
+    int estoque[QTD_AJUDAS];          //ajudas compradas e ainda nao usadas
     bool usadaNestaPergunta[QTD_AJUDAS];
-    bool oculta[4];            /* alternativas removidas pelo 50/50 */
-    int dica;                  /* alternativa revelada como errada (-1 = nenhuma) */
+    bool oculta[4];            //alternativas removidas pelo 50/50
+    int dica;                  //alternativa revelada como errada (-1 = nenhuma)
     bool pamRespondeu;
     bool cpuRespondeu;
     char respostaCPU;
@@ -109,11 +168,9 @@ typedef struct {
 
 } Jogo;
 
-/* ------------------------------------------------------------------ */
-/* FUNCOES AUXILIARES DE DESENHO                                       */
-/* ------------------------------------------------------------------ */
-/* Calcula a altura exata (em pixels) que um texto quebrado vai ocupar */
+//FUNÇÕES AUXILIARES PARA DESENHO DE TEXTO E BOTOES
 
+//Calcula a altura exata (em pixels) que um texto quebrado vai ocupar
 static int calcularAlturaTexto(const char *texto, int larg, int tam) {
 
     char buf[512];
@@ -143,7 +200,7 @@ static int calcularAlturaTexto(const char *texto, int larg, int tam) {
     return linhas * tam + (linhas - 1) * 6;
 }
 
-/* Escreve texto quebrando em varias linhas para caber na largura dada */
+//Escreve texto quebrando em varias linhas para caber na largura dada
 static void textoQuebrado(const char *texto, int x, int y, int larg, int tam, Color cor) {
 
     char buf[512];
@@ -214,9 +271,7 @@ static void centralizado(const char *texto, int y, int tam, Color cor) {
     DrawText(texto, (LARGURA - MeasureText(texto, tam)) / 2, y, tam, cor);
 }
 
-/* ------------------------------------------------------------------ */
-/* LOGICA DA PARTIDA                                                   */
-/* ------------------------------------------------------------------ */
+//LÓGICA DA PARTIDA
 
 static char letraCorreta(const Jogo *j) {
     return (char)toupper((unsigned char)j->banco->itens[j->indice].letraCorreta);
@@ -229,7 +284,7 @@ static void limparEfeitosDaPergunta(Jogo *j) {
 
 }
 
-/* Sorteia a pergunta da rodada e (no modo PC) a resposta e o tempo da CPU */
+//Sorteia a pergunta da rodada e (no modo PC) a resposta e o tempo da CPU
 static void iniciarRodada(Jogo *j) {
 
     int idx[1];
@@ -280,6 +335,7 @@ static void novaPartida(Jogo *j, bool modoCPU, int nivelCPU) {
 
     mostrarPopupResposta = false;
     mostrarPopupDesistencia = false;
+    confetesIniciados = false;
     popupAcertou = false;
     popupPontos = 0;
 
@@ -294,9 +350,9 @@ static void novaPartida(Jogo *j, bool modoCPU, int nivelCPU) {
 
 }
 
-/* Encerra a rodada atual e vai para a tela de feedback */
+///Encerra a rodada atual e vai para a tela de feedback
 
-/* Encerra a rodada atual e abre o popup de resultado */
+//Encerra a rodada atual e abre o popup de resultado
 static void finalizarRodada(Jogo *j) {
     j->cpuRespondeu = true;
     if (j->rodada >= TOTAL_RODADAS) {
@@ -305,8 +361,7 @@ static void finalizarRodada(Jogo *j) {
     mostrarPopupResposta = true;
 }
 
-/* Pam clicou em uma alternativa */
-/* Pam clicou em uma alternativa */
+//Pam clicou em uma alternativa
 static void responder(Jogo *j, char letra) {
     char certa = letraCorreta(j);
     j->pamRespondeu = true;
@@ -370,9 +425,8 @@ static void atualizarCPU(Jogo *j) {
     }
     /* se Pam ainda nao respondeu, ela continua podendo tentar */
 }
-/* ------------------------------------------------------------------ */
-/* AJUDAS                                                              */
-/* ------------------------------------------------------------------ */
+
+//AJUDAS
 
 static void usarAjuda(Jogo *j, int ajuda) {
     if (j->estoque[ajuda] <= 0 || j->usadaNestaPergunta[ajuda] || j->pamRespondeu) return;
@@ -413,9 +467,7 @@ static void usarAjuda(Jogo *j, int ajuda) {
 
 }
 
-/* ------------------------------------------------------------------ */
-/* TELAS                                                               */
-/* ------------------------------------------------------------------ */
+//TELAS
 
 static void telaMenu(Jogo *j) {
 
@@ -551,8 +603,7 @@ static void telaDificuldade(Jogo *j) {
     }
 }
 
-/* Popup de feedback do modo Solo: e uma tela separada da pergunta. */
-/* Popup de feedback (usado tanto no modo Solo quanto contra Angela) */
+//Popup de feedback (usado tanto no modo Solo quanto contra Angela)
 static void desenharPopupResposta(Jogo *j) {
     const Pergunta *p = &j->banco->itens[j->indice];
     char texto[512];
@@ -1031,7 +1082,7 @@ static void telaResultado(Jogo *j) {
         const char *nomeFallback = "";
 
         if (pamVenceu) {
-            snprintf(msg, sizeof(msg), "Parabens! Voce ganhou a competicao");
+            snprintf(msg, sizeof(msg), "Parabéns! Você ganhou a competição");
             texVencedor = texPamVitoria;   /* <-- AQUI entra a imagem nova da Pam */
             nomeFallback = "PAM (coloque PamVitoria.png em assets/visuais/)";
         } else if (angelaVenceu) {
@@ -1039,7 +1090,7 @@ static void telaResultado(Jogo *j) {
             texVencedor = texAngela;       /* <-- AQUI entra a imagem da Angela */
             nomeFallback = "ANGELA (coloque Angela.png em assets/visuais/)";
         } else {
-            snprintf(msg, sizeof(msg), "Empate na competicao!");
+            snprintf(msg, sizeof(msg), "Empate na competição!");
         }
 
         /* Titulo no topo do quadrado */
@@ -1074,24 +1125,58 @@ static void telaResultado(Jogo *j) {
         }
     } else {
         /* Modo Solo */
-        int tamFonte = 28;
-        if (j->premioFinal > 0) {
+        if (j->premioFinal >= 1000000) {
+            const char *tituloMilhao = "PARABENS!! VOCE CONSEGUIU O DUNDIE DE 1 MILHAO!";
+            int tamTitulo = 28;
+            DrawText(tituloMilhao, (LARGURA - MeasureText(tituloMilhao, tamTitulo)) / 2, 75, tamTitulo, DOURADO);
+
+            /* Imagem Pam3.png centralizada */
+            if (texPamMilhao.id != 0) {
+                float altImg = 360.0f;
+                float prop = (float)texPamMilhao.width / (float)texPamMilhao.height;
+                float largImg = altImg * prop;
+                Rectangle orig = { 0, 0, (float)texPamMilhao.width, (float)texPamMilhao.height };
+                Rectangle dest = { (LARGURA - largImg) / 2.0f, 130.0f, largImg, altImg };
+                DrawTexturePro(texPamMilhao, orig, dest, (Vector2){ 0, 0 }, 0.0f, WHITE);
+            }
+
+            /* Confetes estourando dos cantos inferiores */
+            atualizarEDesenharConfetes();
+
+            if (botaoArredondado((Rectangle){ (LARGURA - 240) / 2.0f, 520, 240, 52 }, "Prosseguir", VERDE, true)) {
+                confetesIniciados = false;
+                j->tela = TELA_MENU;
+            }
+        } else if (j->premioFinal > 0) {
+            int tamFonte = 28;
             snprintf(msg, sizeof(msg), "Parabens, voce recebeu o dundie de %d pontos!", j->premioFinal);
-            DrawText(msg, (LARGURA - MeasureText(msg, tamFonte)) / 2, 250, tamFonte, DOURADO);
+            DrawText(msg, (LARGURA - MeasureText(msg, tamFonte)) / 2, 130, tamFonte, DOURADO);
+
+            if (texDundie.id != 0) {
+                float altImg = 260.0f;
+                float prop = (float)texDundie.width / (float)texDundie.height;
+                float largImg = altImg * prop;
+                Rectangle orig = { 0, 0, (float)texDundie.width, (float)texDundie.height };
+                Rectangle dest = { (LARGURA - largImg) / 2.0f, 185.0f, largImg, altImg };
+                DrawTexturePro(texDundie, orig, dest, (Vector2){ 0, 0 }, 0.0f, WHITE);
+            }
+
+            if (botaoArredondado((Rectangle){ (LARGURA - 240) / 2.0f, 480, 240, 52 }, "Voltar ao Menu", COR_BOTAO_MENU, true)) {
+                j->tela = TELA_MENU;
+            }
         } else {
+            int tamFonte = 28;
             snprintf(msg, sizeof(msg), "Vixi, voce nao conseguiu nenhum dundie...");
             DrawText(msg, (LARGURA - MeasureText(msg, tamFonte)) / 2, 250, tamFonte, LIGHTGRAY);
-        }
 
-        if (botaoArredondado((Rectangle){ (LARGURA - 240) / 2.0f, 330, 240, 52 }, "Voltar ao Menu", COR_BOTAO_MENU, true)) {
-            j->tela = TELA_MENU;
+            if (botaoArredondado((Rectangle){ (LARGURA - 240) / 2.0f, 330, 240, 52 }, "Voltar ao Menu", COR_BOTAO_MENU, true)) {
+                j->tela = TELA_MENU;
+            }
         }
     }
 }
 
-/* ------------------------------------------------------------------ */
-/* MAIN                                                                */
-/* ------------------------------------------------------------------ */
+//MAIN
 
 int main(void) {
 
@@ -1150,6 +1235,12 @@ int main(void) {
     if (FileExists("assets/visuais/angela.png")) {
         texAngela = LoadTexture("assets/visuais/angela.png");
     }
+    if (FileExists("assets/visuais/dundie.png")) {
+        texDundie = LoadTexture("assets/visuais/dundie.png");
+    }
+    if (FileExists("assets/visuais/Pam3.png")) {
+        texPamMilhao = LoadTexture("assets/visuais/Pam3.png");
+    }
 
     SetTargetFPS(60);
     while (!WindowShouldClose() && !jogo.sair) {
@@ -1177,6 +1268,8 @@ int main(void) {
     if (texPamMenu.id != 0)    UnloadTexture(texPamMenu);
     if (texPamVitoria.id != 0) UnloadTexture(texPamVitoria);
     if (texAngela.id != 0)     UnloadTexture(texAngela);
+    if (texDundie.id != 0)     UnloadTexture(texDundie);
+    if (texPamMilhao.id != 0)  UnloadTexture(texPamMilhao);
 
     CloseWindow();
     free(jogo.jaUsadas);
