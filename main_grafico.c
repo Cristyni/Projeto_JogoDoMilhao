@@ -31,8 +31,6 @@ static const int PRECOS[QTD_AJUDAS] = { 2, 3, 4 };
 static const char *NOMES_AJUDAS[QTD_AJUDAS] = {
     "Caneca de café",
     "Grampeador na gelatina",
-    "Folha de papel"
-
 };
 
 static const char *NOMES_CURTOS[QTD_AJUDAS] = { "Dica", "50/50", "Trocar" };
@@ -294,21 +292,28 @@ static void novaPartida(Jogo *j, bool modoCPU, int nivelCPU) {
 
 /* Encerra a rodada atual e vai para a tela de feedback */
 
+/* Encerra a rodada atual e abre o popup de resultado */
 static void finalizarRodada(Jogo *j) {
-    if (j->rodada >= TOTAL_RODADAS) j->fimDeJogo = true;
-    j->tela = TELA_FEEDBACK;
-
+    j->cpuRespondeu = true;
+    if (j->rodada >= TOTAL_RODADAS) {
+        j->fimDeJogo = true;
+    }
+    mostrarPopupResposta = true;
 }
 
+/* Pam clicou em uma alternativa */
 /* Pam clicou em uma alternativa */
 static void responder(Jogo *j, char letra) {
     char certa = letraCorreta(j);
     j->pamRespondeu = true;
+
     if (letra == certa) {
         j->moedas += MOEDAS_POR_ACERTO;
         if (j->modoCPU) {
             j->pontosPam++;
-            snprintf(j->mensagem, sizeof(j->mensagem), "Pam acertou primeiro! +1 ponto e +%d moeda.", MOEDAS_POR_ACERTO);
+            popupAcertou = true;
+            snprintf(j->mensagem, sizeof(j->mensagem),
+                     "Pam acertou primeiro! +1 ponto e +%d moeda.", MOEDAS_POR_ACERTO);
             finalizarRodada(j);
         } else {
             j->acertos++;
@@ -323,7 +328,8 @@ static void responder(Jogo *j, char letra) {
     } else {
         if (j->modoCPU) {
             if (j->cpuRespondeu) {
-                snprintf(j->mensagem, sizeof(j->mensagem), "Os dois erraram. Resposta correta: %c", certa);
+                popupAcertou = false;
+                snprintf(j->mensagem, sizeof(j->mensagem), "Os dois erraram!");
                 finalizarRodada(j);
             }
         } else {
@@ -340,19 +346,22 @@ static void responder(Jogo *j, char letra) {
 static void atualizarCPU(Jogo *j) {
     if (!j->modoCPU || j->tela != TELA_PERGUNTA || j->cpuRespondeu) return;
     if (GetTime() - j->inicioRodada < j->tempoCPU) return;
+
     j->cpuRespondeu = true;
     char certa = letraCorreta(j);
+
     if (j->respostaCPU == certa) {
         j->pontosCPU++;
-        snprintf(j->mensagem, sizeof(j->mensagem), "Angela respondeu %c e acertou primeiro! Ponto para a Angela.", j->respostaCPU);
+        popupAcertou = false;
+        snprintf(j->mensagem, sizeof(j->mensagem),
+                 "Angela respondeu %c e acertou primeiro!", j->respostaCPU);
         finalizarRodada(j);
     } else if (j->pamRespondeu) {
-        snprintf(j->mensagem, sizeof(j->mensagem),
-                 "Os dois erraram. Resposta correta: %c", certa);
+        popupAcertou = false;
+        snprintf(j->mensagem, sizeof(j->mensagem), "Os dois erraram!");
         finalizarRodada(j);
     }
     /* se Pam ainda nao respondeu, ela continua podendo tentar */
-
 }
 /* ------------------------------------------------------------------ */
 /* AJUDAS                                                              */
@@ -485,11 +494,12 @@ static void telaDificuldade(Jogo *j) {
 }
 
 /* Popup de feedback do modo Solo: e uma tela separada da pergunta. */
+/* Popup de feedback (usado tanto no modo Solo quanto contra Angela) */
 static void desenharPopupResposta(Jogo *j) {
     const Pergunta *p = &j->banco->itens[j->indice];
     char texto[512];
 
-    /* Fundo do restaurante escurecido; nao desenha alternativas nem botoes atras. */
+    /* Fundo do restaurante escurecido */
     if (texFundoMenu.id != 0) {
         Rectangle origem = { 0, 0, (float)texFundoMenu.width, (float)texFundoMenu.height };
         Rectangle destino = { 0, 0, (float)LARGURA, (float)ALTURA };
@@ -499,43 +509,64 @@ static void desenharPopupResposta(Jogo *j) {
     }
     DrawRectangle(0, 0, LARGURA, ALTURA, (Color){ 0, 0, 0, 185 });
 
+    /* Quadrado quase ocupando a tela toda */
     Rectangle painel = { 90, 80, 820, 490 };
     DrawRectangleRounded(painel, 0.06f, 10, PAINEL);
     DrawRectangleRoundedLinesEx(painel, 0.06f, 10, 4, popupAcertou ? VERDE : VERMELHO);
 
     if (popupAcertou) {
-        const char *titulo = "RESPOSTA CORRETA!";
-        DrawText(titulo, (LARGURA - MeasureText(titulo, 38)) / 2, 145, 38, VERDE);
+        if (j->modoCPU) {
+            const char *titulo = "PONTO PARA A PAM!";
+            DrawText(titulo, (LARGURA - MeasureText(titulo, 38)) / 2, 145, 38, VERDE);
 
-        snprintf(texto, sizeof(texto), "Voce ganhou R$ %d!", popupPontos);
-        DrawText(texto, (LARGURA - MeasureText(texto, 28)) / 2, 245, 28, WHITE);
+            DrawText(j->mensagem, (LARGURA - MeasureText(j->mensagem, 24)) / 2, 235, 24, WHITE);
 
-        snprintf(texto, sizeof(texto), "Total acumulado: R$ %d", j->premioAcumulado);
-        DrawText(texto, (LARGURA - MeasureText(texto, 22)) / 2, 295, 22, DOURADO);
+            snprintf(texto, sizeof(texto), "Placar: Pam %d x %d Angela", j->pontosPam, j->pontosCPU);
+            DrawText(texto, (LARGURA - MeasureText(texto, 24)) / 2, 295, 24, DOURADO);
+        } else {
+            const char *titulo = "RESPOSTA CORRETA!";
+            DrawText(titulo, (LARGURA - MeasureText(titulo, 38)) / 2, 145, 38, VERDE);
+
+            snprintf(texto, sizeof(texto), "Voce ganhou R$ %d!", popupPontos);
+            DrawText(texto, (LARGURA - MeasureText(texto, 28)) / 2, 245, 28, WHITE);
+
+            snprintf(texto, sizeof(texto), "Total acumulado: R$ %d", j->premioAcumulado);
+            DrawText(texto, (LARGURA - MeasureText(texto, 22)) / 2, 295, 22, DOURADO);
+        }
     } else {
-        const char *titulo = "RESPOSTA ERRADA!";
-        DrawText(titulo, (LARGURA - MeasureText(titulo, 38)) / 2, 135, 38, VERMELHO);
+        if (j->modoCPU) {
+            /* Exibe "Angela respondeu X e acertou primeiro!" ou "Os dois erraram!" */
+            DrawText(j->mensagem, (LARGURA - MeasureText(j->mensagem, 30)) / 2, 130, 30, VERMELHO);
+        } else {
+            const char *titulo = "RESPOSTA ERRADA!";
+            DrawText(titulo, (LARGURA - MeasureText(titulo, 38)) / 2, 135, 38, VERMELHO);
+        }
 
         const char *sub = "A resposta certa era:";
-        DrawText(sub, (LARGURA - MeasureText(sub, 24)) / 2, 210, 24, LIGHTGRAY);
+        DrawText(sub, (LARGURA - MeasureText(sub, 24)) / 2, 195, 24, LIGHTGRAY);
 
         char certa = letraCorreta(j);
         int indiceCorreto = certa - 'A';
         if (indiceCorreto >= 0 && indiceCorreto < 4) {
             snprintf(texto, sizeof(texto), "%c) %s", certa, p->alternativas[indiceCorreto]);
-            Rectangle boxCerta = { 150, 260, 700, 115 };
+            Rectangle boxCerta = { 150, 240, 700, 115 };
             DrawRectangleRounded(boxCerta, 0.12f, 8, (Color){ 35, 45, 65, 255 });
             DrawRectangleRoundedLinesEx(boxCerta, 0.12f, 8, 2, DOURADO);
-            textoQuebrado(texto, (int)boxCerta.x + 20, (int)boxCerta.y + 22, (int)boxCerta.width - 40, 22, DOURADO);
+            textoQuebrado(texto, (int)boxCerta.x + 20, (int)boxCerta.y + 22,
+                          (int)boxCerta.width - 40, 22, DOURADO);
+        }
+
+        if (j->modoCPU) {
+            snprintf(texto, sizeof(texto), "Placar: Pam %d x %d Angela", j->pontosPam, j->pontosCPU);
+            DrawText(texto, (LARGURA - MeasureText(texto, 22)) / 2, 385, 22, WHITE);
         }
     }
 
     if (botaoArredondado((Rectangle){ 380, 455, 240, 55 }, "Prosseguir", popupAcertou ? VERDE : VERMELHO, true)) {
         mostrarPopupResposta = false;
 
-        if (popupAcertou) {
-            if (j->rodada >= TOTAL_RODADAS) {
-                j->premioFinal = j->premioAcumulado;
+        if (j->modoCPU) {
+            if (j->rodada >= TOTAL_RODADAS || j->fimDeJogo) {
                 j->fimDeJogo = true;
                 j->tela = TELA_RESULTADO;
             } else {
@@ -543,8 +574,19 @@ static void desenharPopupResposta(Jogo *j) {
                 iniciarRodada(j);
             }
         } else {
-            j->fimDeJogo = true;
-            j->tela = TELA_RESULTADO;
+            if (popupAcertou) {
+                if (j->rodada >= TOTAL_RODADAS) {
+                    j->premioFinal = j->premioAcumulado;
+                    j->fimDeJogo = true;
+                    j->tela = TELA_RESULTADO;
+                } else {
+                    j->rodada++;
+                    iniciarRodada(j);
+                }
+            } else {
+                j->fimDeJogo = true;
+                j->tela = TELA_RESULTADO;
+            }
         }
     }
 }
@@ -843,21 +885,29 @@ static void telaResultado(Jogo *j) {
     char msg[200];
     int tamFonte = 28;
     
-    /* Fundo simples por enquanto (depois decoramos) */
     ClearBackground(FUNDO);
 
-    if (j->premioFinal > 0) {
-
-        snprintf(msg, sizeof(msg), "Parabéns, você recebeu o dundie de %d pontos!", j->premioFinal);
-        int largTexto = MeasureText(msg, tamFonte);
-        DrawText(msg, (LARGURA - largTexto) / 2, 250, tamFonte, DOURADO);
+    if (j->modoCPU) {
+        if (j->pontosPam > j->pontosCPU) {
+            snprintf(msg, sizeof(msg), "Parabens! Voce venceu Angela por %d x %d!", j->pontosPam, j->pontosCPU);
+            DrawText(msg, (LARGURA - MeasureText(msg, tamFonte)) / 2, 250, tamFonte, DOURADO);
+        } else if (j->pontosCPU > j->pontosPam) {
+            snprintf(msg, sizeof(msg), "Angela venceu por %d x %d! Tente novamente.", j->pontosCPU, j->pontosPam);
+            DrawText(msg, (LARGURA - MeasureText(msg, tamFonte)) / 2, 250, tamFonte, VERMELHO);
+        } else {
+            snprintf(msg, sizeof(msg), "Empate! Pam %d x %d Angela.", j->pontosPam, j->pontosCPU);
+            DrawText(msg, (LARGURA - MeasureText(msg, tamFonte)) / 2, 250, tamFonte, WHITE);
+        }
     } else {
-        snprintf(msg, sizeof(msg), "Vixi, você não conseguiu nenhum dundie...");
-        int largTexto = MeasureText(msg, tamFonte);
-        DrawText(msg, (LARGURA - largTexto) / 2, 250, tamFonte, LIGHTGRAY);
+        if (j->premioFinal > 0) {
+            snprintf(msg, sizeof(msg), "Parabéns, você recebeu o dundie de %d pontos!", j->premioFinal);
+            DrawText(msg, (LARGURA - MeasureText(msg, tamFonte)) / 2, 250, tamFonte, DOURADO);
+        } else {
+            snprintf(msg, sizeof(msg), "Vixi, você não conseguiu nenhum dundie...");
+            DrawText(msg, (LARGURA - MeasureText(msg, tamFonte)) / 2, 250, tamFonte, LIGHTGRAY);
+        }
     }
 
-    /* Botao centralizado logo abaixo da mensagem para voltar ao menu */
     if (botaoArredondado((Rectangle){ (LARGURA - 240) / 2.0f, 330, 240, 52 }, "Voltar ao Menu", COR_BOTAO_MENU, true)) {
         j->tela = TELA_MENU;
     }
