@@ -944,8 +944,3 @@ int main(void) {
     liberarBanco(&banco);
     return 0;
 }
-
-
-
-
-
