@@ -16,7 +16,6 @@
 #include "arquivo.h"
 #include "raylib.h"
 
-
 int main(void) {
 
     BancoPerguntas banco;
@@ -28,8 +27,7 @@ int main(void) {
         carregarBinario(&banco, "perguntas.dat");
 
     // Se nao houver banco salvo, carrega o CSV
-    if (!carregouBinario || banco.quantidade == 0) {
-
+    if (!carregouBinario) {
         liberarBanco(&banco);
         inicializarBanco(&banco);
 
@@ -58,9 +56,7 @@ int main(void) {
 
     MenuPrincipal(&banco);
 
-    if (banco.quantidade > 0) {
-        salvarBinario(&banco, "perguntas.dat");
-    }
+    salvarBinario(&banco, "perguntas.dat");
 
     liberarBanco(&banco);
 

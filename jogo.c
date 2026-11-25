@@ -154,7 +154,14 @@ char lerResposta(void) {
             premioSeErrar = 0;
         } else {
             premioSeErrar = premioAcumulado / 2;
-        }
+
+            // Respeita os marcos de seguranca conquistados
+            if (ultimaEtapa >= 10 && premioSeErrar < 50000) {
+                premioSeErrar = 50000;
+            } else if (ultimaEtapa >= 5 && premioSeErrar < 5000) {
+                premioSeErrar = 5000;
+            }
+}
 
         mostrarRodada(rodada, acertos);
 
@@ -192,7 +199,6 @@ char lerResposta(void) {
                 printf("Voce arriscou tudo na pergunta do milhao!\n");
                 printf("Premio final: R$ 0\n");
             } else {
-                printf("Voce leva metade do premio anterior.\n");
                 printf("Premio final: R$ %d\n", premioFinal);
             }
 
