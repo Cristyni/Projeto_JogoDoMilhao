@@ -330,116 +330,144 @@ static void finalizarRodada(Jogo *j) {
     j->tela = TELA_FEEDBACK;
 }
 
-/* Pam clicou em uma alternativa */
-static void responder(Jogo *j, char letra) {
-    char certa = letraCorreta(j);
-    j->pamRespondeu = true;
+static void verificarResultadoCompeticao(Jogo *j) {
+    int resultado = atualizarPartidaCompeticao(&j->partida, GetTime());
 
-    if (letra == certa) {
-        j->moedas += MOEDAS_POR_ACERTO;
+    j->cpuRespondeu = j->partida.angela.respondeu;
+    j->pontosPam = j->partida.pontosPam;
+    j->pontosCPU = j->partida.pontosAngela;
+    j->moedas = j->partida.moedas;
 
-        if (j->modoCPU) {
-            j->pontosPam++;
-            snprintf(j->mensagem, sizeof(j->mensagem),
-                     "Pam acertou primeiro! +1 ponto e +%d moeda.", MOEDAS_POR_ACERTO);
-        } else {
-            j->acertos++;
-            j->premioAcumulado = PREMIOS[j->rodada - 1];
-            if (j->rodada == TOTAL_RODADAS) {
-                j->premioFinal = j->premioAcumulado;
-                snprintf(j->mensagem, sizeof(j->mensagem),
-                         "PARABENS! Voce ganhou R$ %d!", j->premioFinal);
-            } else {
-                snprintf(j->mensagem, sizeof(j->mensagem),
-                         "RESPOSTA CORRETA! Premio: R$ %d", j->premioAcumulado);
-            }
-        }
-        finalizarRodada(j);
+    if (resultado <= 0) return;
+
+    if (resultado == 1) {
+        snprintf(j->mensagem, sizeof(j->mensagem),
+                 "Pam venceu a rodada! +1 ponto.");
+    } else if (resultado == 2) {
+        snprintf(j->mensagem, sizeof(j->mensagem),
+                 "Angela venceu a rodada! +1 ponto.");
     } else {
-        if (j->modoCPU) {
-            if (j->cpuRespondeu) {
-                /* a CPU ja tinha errado antes */
-                snprintf(j->mensagem, sizeof(j->mensagem),
-                         "Os dois erraram. Resposta correta: %c", certa);
-                finalizarRodada(j);
-            }
-            /* senao: espera a CPU tentar (atualizarCPU cuida disso) */
-        } else {
-            j->premioFinal = (j->rodada == TOTAL_RODADAS) ? 0 : j->premioAcumulado / 2;
-            j->fimDeJogo = true;
-            snprintf(j->mensagem, sizeof(j->mensagem),
-                     "RESPOSTA ERRADA! Correta: %c. Voce leva R$ %d", certa, j->premioFinal);
-            finalizarRodada(j);
-        }
+        snprintf(j->mensagem, sizeof(j->mensagem),
+                 "Empate! Ninguem pontuou.");
     }
+
+    finalizarRodada(j);
 }
 
-/* Chamada todo frame: verifica se o tempo da CPU acabou (sem sleep!) */
-static void atualizarCPUVisual(Jogo *j){
-    if (!j->modoCPU || j->tela != TELA_PERGUNTA || j->cpuRespondeu) return;
-        if (!atualizarCPU(&j->angela, GetTime())) return;
-    j->cpuRespondeu = true;
-    char certa = letraCorreta(j);
+static void responder(Jogo *j, char letra) {
+    if (j->pamRespondeu || j->tela != TELA_PERGUNTA) return;
 
-    if (j->respostaCPU == certa) {
-        j->pontosCPU++;
-        snprintf(j->mensagem, sizeof(j->mensagem),
-                 "Angela respondeu %c e acertou primeiro! Ponto para a Angela.", j->respostaCPU);
-        finalizarRodada(j);
-    } else if (j->pamRespondeu) {
-        snprintf(j->mensagem, sizeof(j->mensagem),
-                 "Os dois erraram. Resposta correta: %c", certa);
-        finalizarRodada(j);
+    int resposta = registrarRespostaPam(
+        &j->partida,
+        letra,
+        MOEDAS_POR_ACERTO,
+        GetTime()
+    );
+
+    if (resposta < 0) return;
+
+    j->pamRespondeu = true;
+    j->moedas = j->partida.moedas;
+    j->acertos = j->partida.acertosPam;
+
+    if (j->modoCPU) {
+        verificarResultadoCompeticao(j);
+        return;
     }
-    /* se Pam ainda nao respondeu, ela continua podendo tentar */
+
+    int avaliacao = avaliarRodadaSolo(&j->partida);
+
+    if (avaliacao == 1) {
+        j->premioAcumulado = j->partida.premio;
+
+        snprintf(j->mensagem, sizeof(j->mensagem),
+                 "RESPOSTA CORRETA! Premio: R$ %d",
+                 j->premioAcumulado);
+
+    } else if (avaliacao == 3) {
+        j->premioAcumulado = j->partida.premio;
+        j->premioFinal = j->partida.premio;
+        j->fimDeJogo = true;
+
+        snprintf(j->mensagem, sizeof(j->mensagem),
+                 "PARABENS! Voce ganhou R$ %d!",
+                 j->premioFinal);
+
+    } else if (avaliacao == 2) {
+        j->premioFinal = j->partida.premio;
+        j->fimDeJogo = true;
+
+        snprintf(j->mensagem, sizeof(j->mensagem),
+                 "RESPOSTA ERRADA! Correta: %c. Voce leva R$ %d",
+                 letraCorreta(j), j->premioFinal);
+
+    } else {
+        return;
+    }
+
+    finalizarRodada(j);
+}
+
+static void atualizarCPUVisual(Jogo *j) {
+    if (!j->modoCPU || j->tela != TELA_PERGUNTA) return;
+
+    j->inicioRodada = j->partida.angela.inicioPergunta;
+    j->tempoCPU = (int)j->partida.angela.tempoResposta;
+    j->respostaCPU = j->partida.angela.resposta;
+
+    verificarResultadoCompeticao(j);
 }
 
 /* ------------------------------------------------------------------ */
 /* AJUDAS                                                              */
 /* ------------------------------------------------------------------ */
 static void usarAjuda(Jogo *j, int ajuda) {
-    if (j->estoque[ajuda] <= 0 || j->usadaNestaPergunta[ajuda] || j->pamRespondeu) return;
+    if (j == NULL || ajuda < 0 || ajuda >= QTD_AJUDAS) return;
 
-    char certa = letraCorreta(j);
-    int candidatas[4];
-    int total = 0;
+    if (j->estoque[ajuda] <= 0 ||
+        j->usadaNestaPergunta[ajuda] || j->pamRespondeu) return;
 
-    if (ajuda == AJUDA_5050) {
-        for (int i = 0; i < 4; i++) {
-            if ('A' + i != certa && !j->oculta[i]) candidatas[total++] = i;
-        }
-        if (total < 2) return;
+    EfeitoAjuda efeito = usarAjudaCreed(
+        &j->partida,
+        (TipoAjuda)ajuda,
+        GetTime()
+    );
 
-        /* embaralha e esconde duas */
-        for (int i = total - 1; i > 0; i--) {
-            int k = rand() % (i + 1);
-            int aux = candidatas[i]; candidatas[i] = candidatas[k]; candidatas[k] = aux;
-        }
-        j->oculta[candidatas[0]] = true;
-        j->oculta[candidatas[1]] = true;
-
-    } else if (ajuda == AJUDA_DICA) {
-        for (int i = 0; i < 4; i++) {
-            if ('A' + i != certa && !j->oculta[i]) candidatas[total++] = i;
-        }
-        if (total < 1) return;
-        j->dica = candidatas[rand() % total];
-
-    } else if (ajuda == AJUDA_TROCA) {
-        int idx[1];
-        if (sortearPerguntasRodada(j->banco, j->rodada, idx, j->jaUsadas) != 1) {
+    if (!efeito.valido) {
+        if (efeito.erro != NULL) {
             snprintf(j->mensagem, sizeof(j->mensagem),
-                     "Nao ha outra pergunta desse nivel disponivel.");
-            return;   /* nao gasta a ajuda */
+                     "%s", efeito.erro);
         }
-        j->indice = idx[0];
-        limparEfeitosDaPergunta(j);
-        j->usadaNestaPergunta[AJUDA_DICA] = false;
-        j->usadaNestaPergunta[AJUDA_5050] = false;
+        return;
     }
 
     j->estoque[ajuda]--;
     j->usadaNestaPergunta[ajuda] = true;
+    j->moedas = j->partida.moedas;
+
+    for (int i = 0; i < 4; i++) {
+        j->oculta[i] = j->partida.ocultas[i];
+    }
+
+    j->dica = j->partida.dicaIndice;
+
+    if (efeito.trocarPergunta) {
+        j->indice = j->partida.indicePergunta;
+
+        for (int i = 0; i < QTD_AJUDAS; i++) {
+            j->usadaNestaPergunta[i] = false;
+        }
+
+        j->pamRespondeu = false;
+        j->cpuRespondeu = false;
+
+        if (j->modoCPU) {
+            j->angela = j->partida.angela;
+            j->respostaCPU = j->partida.angela.resposta;
+            j->tempoCPU = (int)j->partida.angela.tempoResposta;
+            j->inicioRodada = j->partida.angela.inicioPergunta;
+        }
+    }
 }
 
 /* ------------------------------------------------------------------ */
@@ -673,6 +701,33 @@ static void telaPergunta(Jogo *j) {
     }
 }
 
+static void concluirPartida(Jogo *j) {
+    if (j->modoCPU) {
+        int vencedor = encerrarCompeticao(&j->partida);
+
+        j->pontosPam = j->partida.pontosPam;
+        j->pontosCPU = j->partida.pontosAngela;
+
+        if (vencedor == 1) {
+            snprintf(j->mensagem, sizeof(j->mensagem),
+                     "Pam venceu a competicao!");
+        } else if (vencedor == 2) {
+            snprintf(j->mensagem, sizeof(j->mensagem),
+                     "Angela venceu a competicao!");
+        } else if (vencedor == 3) {
+            snprintf(j->mensagem, sizeof(j->mensagem),
+                     "A competicao terminou empatada!");
+        } else {
+            snprintf(j->mensagem, sizeof(j->mensagem),
+                     "Competicao encerrada.");
+        }
+    } else {
+        j->premioFinal = j->partida.premio;
+    }
+
+    j->tela = TELA_RESULTADO;
+}
+
 static void telaFeedback(Jogo *j) {
     centralizado("THE OFFICE", 90, 40, DOURADO);
 
@@ -682,9 +737,8 @@ static void telaFeedback(Jogo *j) {
 
     if (botao((Rectangle){ 350, 450, 300, 60 }, "Continuar", AZUL, true)) {
         if (j->fimDeJogo) {
-            j->tela = TELA_RESULTADO;
+            concluirPartida(j);
         } else {
-            j->rodada++;
             j->tela = TELA_LOJA;
         }
     }
@@ -709,13 +763,24 @@ static void telaLoja(Jogo *j) {
         snprintf(texto, sizeof(texto), "Preco: %d moedas   |   Voce tem: %d", PRECOS[a], j->estoque[a]);
         DrawText(texto, 120, (int)y + 42, 18, LIGHTGRAY);
 
-        if (botao((Rectangle){ 720, y + 12, 160, 50 }, "Comprar", VERDE, true)) {
-            if (j->moedas >= PRECOS[a]) {
-                j->moedas -= PRECOS[a];
+        if (botao((Rectangle){ 720, y + 12, 160, 50 },
+          "Comprar", VERDE, true)) {
+
+            int custo = comprarAjudaCreed(
+                &j->partida,
+                (TipoAjuda)a
+            );
+
+            if (custo > 0) {
+                j->moedas = j->partida.moedas;
                 j->estoque[a]++;
+
                 snprintf(j->mensagem, sizeof(j->mensagem), "Compra feita: %s!", NOMES_AJUDAS[a]);
-            } else {
+
+            } else if (j->partida.moedas < PRECOS[a]) {
                 snprintf(j->mensagem, sizeof(j->mensagem), "Moedas insuficientes!");
+            } else {
+                snprintf(j->mensagem, sizeof(j->mensagem), "Nao foi possivel comprar esta ajuda.");
             }
         }
     }
@@ -724,10 +789,23 @@ static void telaLoja(Jogo *j) {
         DrawText(j->mensagem, 100, 430, 22, DOURADO);
     }
 
-    snprintf(texto, sizeof(texto), "Seguir para a pergunta %d", j->rodada);
+  snprintf(texto, sizeof(texto), "Seguir para a pergunta %d", j->partida.rodada + 1);
+
     if (botao((Rectangle){ 330, 500, 340, 60 }, texto, AZUL, true)) {
         j->mensagem[0] = '\0';
-        iniciarRodada(j);
+
+        if (avancarRodada(&j->partida)) {
+            j->rodada = j->partida.rodada;
+            j->moedas = j->partida.moedas;
+            j->acertos = j->partida.acertosPam;
+
+            iniciarRodada(j);
+        } else {
+            j->premioFinal = j->partida.premio;
+            snprintf(j->mensagem, sizeof(j->mensagem),
+                    "Nao ha mais perguntas disponiveis.");
+            j->tela = TELA_RESULTADO;
+        }
     }
 }
 
@@ -735,22 +813,42 @@ static void telaResultado(Jogo *j) {
     char msg[200];
     int tamFonte = 28;
 
-    /* Fundo simples por enquanto (depois decoramos) */
     ClearBackground(FUNDO);
 
-    if (j->premioFinal > 0) {
-        snprintf(msg, sizeof(msg), "Parabéns, você recebeu o dundie de %d pontos!", j->premioFinal);
+    if (j->modoCPU) {
+        snprintf(msg, sizeof(msg), "Pam: %d pontos | Angela: %d pontos",
+                 j->partida.pontosPam,
+                 j->partida.pontosAngela);
+
         int largTexto = MeasureText(msg, tamFonte);
-        DrawText(msg, (LARGURA - largTexto) / 2, 250, tamFonte, DOURADO);
+        DrawText(msg, (LARGURA - largTexto) / 2,
+                 210, tamFonte, DOURADO);
+
+        int largMensagem = MeasureText(j->mensagem, 24);
+        DrawText(j->mensagem,
+                 (LARGURA - largMensagem) / 2,
+                 280, 24, WHITE);
+
+    } else if (j->premioFinal > 0) {
+        snprintf(msg, sizeof(msg),
+                 "Parabens, voce recebeu o dundie de %d pontos!",
+                 j->premioFinal);
+
+        int largTexto = MeasureText(msg, tamFonte);
+        DrawText(msg, (LARGURA - largTexto) / 2,
+                 250, tamFonte, DOURADO);
+
     } else {
-        snprintf(msg, sizeof(msg), "Vixi, você não conseguiu nenhum dundie...");
+        snprintf(msg, sizeof(msg),
+                 "Vixi, voce nao conseguiu nenhum dundie...");
+
         int largTexto = MeasureText(msg, tamFonte);
         DrawText(msg, (LARGURA - largTexto) / 2, 250, tamFonte, LIGHTGRAY);
     }
 
-    /* Botao centralizado logo abaixo da mensagem para voltar ao menu */
-    if (botaoArredondado((Rectangle){ (LARGURA - 240) / 2.0f, 330, 240, 52 }, "Voltar ao Menu", COR_BOTAO_MENU, true)) {
-        j->tela = TELA_MENU;
+    if (botaoArredondado(
+        (Rectangle){ (LARGURA - 240) / 2.0f, 380, 240, 52 }, "Voltar ao Menu", COR_BOTAO_MENU, true)) {
+            j->tela = TELA_MENU;
     }
 }
 
